@@ -1,0 +1,443 @@
+
+main.elf:     file format elf32-avr
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         00000174  00000000  00000000  00000074  2**1
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .data         00000000  00800060  00000174  000001e8  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .comment      00000030  00000000  00000000  000001e8  2**0
+                  CONTENTS, READONLY
+  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  00000218  2**2
+                  CONTENTS, READONLY
+  4 .debug_aranges 00000028  00000000  00000000  00000254  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  5 .debug_info   000005da  00000000  00000000  0000027c  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  6 .debug_abbrev 0000046b  00000000  00000000  00000856  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  7 .debug_line   000002a1  00000000  00000000  00000cc1  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  8 .debug_frame  000000a4  00000000  00000000  00000f64  2**2
+                  CONTENTS, READONLY, DEBUGGING
+  9 .debug_str    0000030a  00000000  00000000  00001008  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 10 .debug_loc    00000241  00000000  00000000  00001312  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 11 .debug_ranges 00000030  00000000  00000000  00001553  2**0
+                  CONTENTS, READONLY, DEBUGGING
+
+Disassembly of section .text:
+
+00000000 <__vectors>:
+   0:	09 c0       	rjmp	.+18     	; 0x14 <__ctors_end>
+   2:	0e c0       	rjmp	.+28     	; 0x20 <__bad_interrupt>
+   4:	0d c0       	rjmp	.+26     	; 0x20 <__bad_interrupt>
+   6:	0c c0       	rjmp	.+24     	; 0x20 <__bad_interrupt>
+   8:	0b c0       	rjmp	.+22     	; 0x20 <__bad_interrupt>
+   a:	0a c0       	rjmp	.+20     	; 0x20 <__bad_interrupt>
+   c:	09 c0       	rjmp	.+18     	; 0x20 <__bad_interrupt>
+   e:	08 c0       	rjmp	.+16     	; 0x20 <__bad_interrupt>
+  10:	56 c0       	rjmp	.+172    	; 0xbe <__vector_8>
+  12:	54 c0       	rjmp	.+168    	; 0xbc <__vector_9>
+
+00000014 <__ctors_end>:
+  14:	11 24       	eor	r1, r1
+  16:	1f be       	out	0x3f, r1	; 63
+  18:	cf e9       	ldi	r28, 0x9F	; 159
+  1a:	cd bf       	out	0x3d, r28	; 61
+  1c:	51 d0       	rcall	.+162    	; 0xc0 <main>
+  1e:	a8 c0       	rjmp	.+336    	; 0x170 <_exit>
+
+00000020 <__bad_interrupt>:
+  20:	ef cf       	rjmp	.-34     	; 0x0 <__vectors>
+
+00000022 <system_sleep>:
+#define RGB_GREEN PB1
+#define RGB_BLUE PB2
+
+// Put the AVR in power down sleep mode
+void system_sleep(void) {
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Set sleep mode
+  22:	85 b7       	in	r24, 0x35	; 53
+  24:	87 7e       	andi	r24, 0xE7	; 231
+  26:	80 61       	ori	r24, 0x10	; 16
+  28:	85 bf       	out	0x35, r24	; 53
+	sleep_mode(); // System sleeps here
+  2a:	85 b7       	in	r24, 0x35	; 53
+  2c:	80 62       	ori	r24, 0x20	; 32
+  2e:	85 bf       	out	0x35, r24	; 53
+  30:	88 95       	sleep
+  32:	85 b7       	in	r24, 0x35	; 53
+  34:	8f 7d       	andi	r24, 0xDF	; 223
+  36:	85 bf       	out	0x35, r24	; 53
+  38:	08 95       	ret
+
+0000003a <setup_watchdog>:
+}
+
+// Setup watchdog timed sequence
+void setup_watchdog(uint8_t wdDelay) {
+	if (wdDelay > 7) {
+  3a:	88 30       	cpi	r24, 0x08	; 8
+  3c:	10 f0       	brcs	.+4      	; 0x42 <__SREG__+0x3>
+		wdDelay = wdDelay & 7;
+  3e:	87 70       	andi	r24, 0x07	; 7
+		wdDelay |= (1<<5); // Set WDP3 bit
+  40:	80 62       	ori	r24, 0x20	; 32
+	}
+	
+	MCUSR &= ~(1<<WDRF); // Turn off flag
+  42:	94 b7       	in	r25, 0x34	; 52
+  44:	97 7f       	andi	r25, 0xF7	; 247
+  46:	94 bf       	out	0x34, r25	; 52
+	WDTCR |= (1<<WDCE) | (1<<WDE); // Start timed sequence
+  48:	91 b5       	in	r25, 0x21	; 33
+  4a:	98 61       	ori	r25, 0x18	; 24
+  4c:	91 bd       	out	0x21, r25	; 33
+	WDTCR = wdDelay | (1<<WDTIE); // Set new watchdog timeout value
+  4e:	80 64       	ori	r24, 0x40	; 64
+  50:	81 bd       	out	0x21, r24	; 33
+  52:	08 95       	ret
+
+00000054 <turn_off_watchdog>:
+}
+
+// Turn off the Watchdog
+void turn_off_watchdog(void) {
+	cli(); // Turn interrupts off
+  54:	f8 94       	cli
+	MCUSR &= ~(1<<WDRF);
+  56:	84 b7       	in	r24, 0x34	; 52
+  58:	87 7f       	andi	r24, 0xF7	; 247
+  5a:	84 bf       	out	0x34, r24	; 52
+	WDTCR |= (1<<WDCE) | (1<<WDE);
+  5c:	81 b5       	in	r24, 0x21	; 33
+  5e:	88 61       	ori	r24, 0x18	; 24
+  60:	81 bd       	out	0x21, r24	; 33
+	WDTCR = 0;
+  62:	11 bc       	out	0x21, r1	; 33
+	sei(); // Turn interrupts back on
+  64:	78 94       	sei
+  66:	08 95       	ret
+
+00000068 <watchdog_sleep>:
+}
+
+// Watchdog sleep function - setup, sleep and turn off
+void watchdog_sleep(uint8_t timeout) { 
+	setup_watchdog(timeout);
+  68:	e8 df       	rcall	.-48     	; 0x3a <setup_watchdog>
+	system_sleep();
+  6a:	db df       	rcall	.-74     	; 0x22 <system_sleep>
+	turn_off_watchdog();
+  6c:	f3 cf       	rjmp	.-26     	; 0x54 <turn_off_watchdog>
+
+0000006e <adc_read>:
+}
+
+// ADC Read
+int adc_read(uint8_t pin, uint8_t reference) {
+  6e:	8f 73       	andi	r24, 0x3F	; 63
+	uint8_t low, high;
+	
+	// Set the pin and ref
+	if (reference == ADC_REF_1_1V) {
+  70:	61 30       	cpi	r22, 0x01	; 1
+  72:	09 f4       	brne	.+2      	; 0x76 <adc_read+0x8>
+		ADMUX = (1<<REFS0) | (pin & 0x3F);
+  74:	80 64       	ori	r24, 0x40	; 64
+	}
+	else {
+		ADMUX = (pin & 0x3F);
+  76:	87 b9       	out	0x07, r24	; 7
+	}
+	
+	set_sleep_mode(SLEEP_MODE_ADC); // Set sleep mode ADC
+  78:	85 b7       	in	r24, 0x35	; 53
+  7a:	87 7e       	andi	r24, 0xE7	; 231
+  7c:	88 60       	ori	r24, 0x08	; 8
+  7e:	85 bf       	out	0x35, r24	; 53
+	sleep_mode(); // System sleeps here
+  80:	85 b7       	in	r24, 0x35	; 53
+  82:	80 62       	ori	r24, 0x20	; 32
+  84:	85 bf       	out	0x35, r24	; 53
+  86:	88 95       	sleep
+  88:	85 b7       	in	r24, 0x35	; 53
+  8a:	8f 7d       	andi	r24, 0xDF	; 223
+  8c:	85 bf       	out	0x35, r24	; 53
+	
+	// we have to read ADCL first; doing so locks both ADCL
+	// and ADCH until ADCH is read.  reading ADCL second would
+	// cause the results of each conversion to be discarded,
+	// as ADCL and ADCH would be locked when it completed.
+	low = ADCL;
+  8e:	84 b1       	in	r24, 0x04	; 4
+	high = ADCH;
+  90:	25 b1       	in	r18, 0x05	; 5
+	
+	// combine the two bytes
+	return (high << 8) | low;
+  92:	90 e0       	ldi	r25, 0x00	; 0
+}
+  94:	92 2b       	or	r25, r18
+  96:	08 95       	ret
+
+00000098 <setup>:
+
+// Setup the AVR
+void setup(void) {
+	// Set RGB outputs and all off
+	DDRB |= (1<<PB2) | (1<<PB1) | (1<<PB0);
+  98:	87 b3       	in	r24, 0x17	; 23
+  9a:	87 60       	ori	r24, 0x07	; 7
+  9c:	87 bb       	out	0x17, r24	; 23
+	PORTB |= (1<<PB2) | (1<<PB1) | (1<<PB0);
+  9e:	88 b3       	in	r24, 0x18	; 24
+  a0:	87 60       	ori	r24, 0x07	; 7
+  a2:	88 bb       	out	0x18, r24	; 24
+	#else
+		//round up by default
+		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+	#endif
+
+	__builtin_avr_delay_cycles(__ticks_dc);
+  a4:	83 e2       	ldi	r24, 0x23	; 35
+  a6:	94 ef       	ldi	r25, 0xF4	; 244
+  a8:	01 97       	sbiw	r24, 0x01	; 1
+  aa:	f1 f7       	brne	.-4      	; 0xa8 <__stack+0x9>
+  ac:	00 c0       	rjmp	.+0      	; 0xae <__stack+0xf>
+  ae:	00 00       	nop
+	// Wait a bit
+	_delay_ms(250);
+	
+	// Set ADC prescale factor to 8
+	// 1 MHz / 8 = 125 KHz, inside the desired 50-200 KHz range.
+	sbi(ADCSRA, ADPS1);
+  b0:	31 9a       	sbi	0x06, 1	; 6
+	sbi(ADCSRA, ADPS0);
+  b2:	30 9a       	sbi	0x06, 0	; 6
+	
+	// Enable ADC/interrupt
+	sbi(ADCSRA, ADEN);
+  b4:	37 9a       	sbi	0x06, 7	; 6
+	sbi(ADCSRA, ADIE);
+  b6:	33 9a       	sbi	0x06, 3	; 6
+	
+	sei(); // Turn on interrupts
+  b8:	78 94       	sei
+  ba:	08 95       	ret
+
+000000bc <__vector_9>:
+	
+	
+	return 0;
+}
+
+EMPTY_INTERRUPT(ADC_vect);
+  bc:	18 95       	reti
+
+000000be <__vector_8>:
+EMPTY_INTERRUPT(WDT_vect);
+  be:	18 95       	reti
+
+000000c0 <main>:
+#include <avr/sleep.h>
+#include <util/delay.h>
+#include "setup.c"
+
+int main(void) {
+	setup();
+  c0:	eb df       	rcall	.-42     	; 0x98 <setup>
+	
+	uint8_t rgbColour = 0;
+  c2:	c0 e0       	ldi	r28, 0x00	; 0
+		uint16_t batteryVoltageLevel = 0;
+		for (uint8_t x = 0; x < 5; x++) {
+			batteryVoltageLevel += adc_read(batteryADCPin, ADC_REF_1_1V);
+			_delay_ms(5);
+		}
+		batteryVoltageLevel = batteryVoltageLevel / 5;
+  c4:	05 e0       	ldi	r16, 0x05	; 5
+  c6:	10 e0       	ldi	r17, 0x00	; 0
+#include "setup.c"
+
+int main(void) {
+	setup();
+	
+	uint8_t rgbColour = 0;
+  c8:	d5 e0       	ldi	r29, 0x05	; 5
+	
+	while (1) {
+		// 5 samples over 25ms
+		uint16_t batteryVoltageLevel = 0;
+  ca:	e1 2c       	mov	r14, r1
+  cc:	f1 2c       	mov	r15, r1
+		for (uint8_t x = 0; x < 5; x++) {
+			batteryVoltageLevel += adc_read(batteryADCPin, ADC_REF_1_1V);
+  ce:	61 e0       	ldi	r22, 0x01	; 1
+  d0:	83 e0       	ldi	r24, 0x03	; 3
+  d2:	cd df       	rcall	.-102    	; 0x6e <adc_read>
+  d4:	e8 0e       	add	r14, r24
+  d6:	f9 1e       	adc	r15, r25
+  d8:	81 ee       	ldi	r24, 0xE1	; 225
+  da:	94 e0       	ldi	r25, 0x04	; 4
+  dc:	01 97       	sbiw	r24, 0x01	; 1
+  de:	f1 f7       	brne	.-4      	; 0xdc <main+0x1c>
+  e0:	00 c0       	rjmp	.+0      	; 0xe2 <main+0x22>
+  e2:	00 00       	nop
+  e4:	d1 50       	subi	r29, 0x01	; 1
+	uint8_t rgbColour = 0;
+	
+	while (1) {
+		// 5 samples over 25ms
+		uint16_t batteryVoltageLevel = 0;
+		for (uint8_t x = 0; x < 5; x++) {
+  e6:	99 f7       	brne	.-26     	; 0xce <main+0xe>
+			batteryVoltageLevel += adc_read(batteryADCPin, ADC_REF_1_1V);
+			_delay_ms(5);
+		}
+		batteryVoltageLevel = batteryVoltageLevel / 5;
+  e8:	c7 01       	movw	r24, r14
+  ea:	b8 01       	movw	r22, r16
+  ec:	2d d0       	rcall	.+90     	; 0x148 <__udivmodhi4>
+		
+		
+		int greenHysterious = 0;
+		int blueHysterious = 0;
+		if (rgbColour == 2) { // Green
+  ee:	c2 30       	cpi	r28, 0x02	; 2
+  f0:	39 f0       	breq	.+14     	; 0x100 <main+0x40>
+			greenHysterious = -10;
+		}
+		else if (rgbColour == 1) { // Blue
+  f2:	c1 30       	cpi	r28, 0x01	; 1
+  f4:	51 f0       	breq	.+20     	; 0x10a <main+0x4a>
+			greenHysterious = 10;
+		}
+		else { // Red
+			blueHysterious = 10;
+  f6:	8a e0       	ldi	r24, 0x0A	; 10
+  f8:	90 e0       	ldi	r25, 0x00	; 0
+			_delay_ms(5);
+		}
+		batteryVoltageLevel = batteryVoltageLevel / 5;
+		
+		
+		int greenHysterious = 0;
+  fa:	20 e0       	ldi	r18, 0x00	; 0
+  fc:	30 e0       	ldi	r19, 0x00	; 0
+  fe:	09 c0       	rjmp	.+18     	; 0x112 <main+0x52>
+		int blueHysterious = 0;
+ 100:	80 e0       	ldi	r24, 0x00	; 0
+ 102:	90 e0       	ldi	r25, 0x00	; 0
+		if (rgbColour == 2) { // Green
+			greenHysterious = -10;
+ 104:	26 ef       	ldi	r18, 0xF6	; 246
+ 106:	3f ef       	ldi	r19, 0xFF	; 255
+ 108:	04 c0       	rjmp	.+8      	; 0x112 <main+0x52>
+		}
+		batteryVoltageLevel = batteryVoltageLevel / 5;
+		
+		
+		int greenHysterious = 0;
+		int blueHysterious = 0;
+ 10a:	80 e0       	ldi	r24, 0x00	; 0
+ 10c:	90 e0       	ldi	r25, 0x00	; 0
+		if (rgbColour == 2) { // Green
+			greenHysterious = -10;
+		}
+		else if (rgbColour == 1) { // Blue
+			greenHysterious = 10;
+ 10e:	2a e0       	ldi	r18, 0x0A	; 10
+ 110:	30 e0       	ldi	r19, 0x00	; 0
+			blueHysterious = 10;
+		}
+		
+		
+		// Green
+		if (batteryVoltageLevel >= (650 + greenHysterious)) { // 3.8v
+ 112:	26 57       	subi	r18, 0x76	; 118
+ 114:	3d 4f       	sbci	r19, 0xFD	; 253
+ 116:	62 17       	cp	r22, r18
+ 118:	73 07       	cpc	r23, r19
+ 11a:	28 f0       	brcs	.+10     	; 0x126 <main+0x66>
+			PORTB &= ~(1<<RGB_GREEN);
+ 11c:	c1 98       	cbi	0x18, 1	; 24
+			PORTB |= (1<<RGB_RED);
+ 11e:	c0 9a       	sbi	0x18, 0	; 24
+			PORTB |= (1<<RGB_BLUE);
+ 120:	c2 9a       	sbi	0x18, 2	; 24
+			rgbColour = 2;
+ 122:	c2 e0       	ldi	r28, 0x02	; 2
+ 124:	0e c0       	rjmp	.+28     	; 0x142 <main+0x82>
+		}
+		
+		// Blue
+		else if (batteryVoltageLevel >= (580 + blueHysterious)) { // 3.3v
+ 126:	8c 5b       	subi	r24, 0xBC	; 188
+ 128:	9d 4f       	sbci	r25, 0xFD	; 253
+ 12a:	68 17       	cp	r22, r24
+ 12c:	79 07       	cpc	r23, r25
+ 12e:	28 f0       	brcs	.+10     	; 0x13a <main+0x7a>
+			PORTB &= ~(1<<RGB_BLUE);
+ 130:	c2 98       	cbi	0x18, 2	; 24
+			PORTB |= (1<<RGB_RED);
+ 132:	c0 9a       	sbi	0x18, 0	; 24
+			PORTB |= (1<<RGB_GREEN);
+ 134:	c1 9a       	sbi	0x18, 1	; 24
+			rgbColour = 1;
+ 136:	c1 e0       	ldi	r28, 0x01	; 1
+ 138:	04 c0       	rjmp	.+8      	; 0x142 <main+0x82>
+		}
+		
+		// Red
+		else {
+			PORTB &= ~(1<<RGB_RED);
+ 13a:	c0 98       	cbi	0x18, 0	; 24
+			PORTB |= (1<<RGB_BLUE);
+ 13c:	c2 9a       	sbi	0x18, 2	; 24
+			PORTB |= (1<<RGB_GREEN);
+ 13e:	c1 9a       	sbi	0x18, 1	; 24
+			rgbColour = 0;
+ 140:	c0 e0       	ldi	r28, 0x00	; 0
+		}
+		
+		watchdog_sleep(T1S);
+ 142:	86 e0       	ldi	r24, 0x06	; 6
+ 144:	91 df       	rcall	.-222    	; 0x68 <watchdog_sleep>
+	}
+ 146:	c0 cf       	rjmp	.-128    	; 0xc8 <main+0x8>
+
+00000148 <__udivmodhi4>:
+ 148:	aa 1b       	sub	r26, r26
+ 14a:	bb 1b       	sub	r27, r27
+ 14c:	51 e1       	ldi	r21, 0x11	; 17
+ 14e:	07 c0       	rjmp	.+14     	; 0x15e <__udivmodhi4_ep>
+
+00000150 <__udivmodhi4_loop>:
+ 150:	aa 1f       	adc	r26, r26
+ 152:	bb 1f       	adc	r27, r27
+ 154:	a6 17       	cp	r26, r22
+ 156:	b7 07       	cpc	r27, r23
+ 158:	10 f0       	brcs	.+4      	; 0x15e <__udivmodhi4_ep>
+ 15a:	a6 1b       	sub	r26, r22
+ 15c:	b7 0b       	sbc	r27, r23
+
+0000015e <__udivmodhi4_ep>:
+ 15e:	88 1f       	adc	r24, r24
+ 160:	99 1f       	adc	r25, r25
+ 162:	5a 95       	dec	r21
+ 164:	a9 f7       	brne	.-22     	; 0x150 <__udivmodhi4_loop>
+ 166:	80 95       	com	r24
+ 168:	90 95       	com	r25
+ 16a:	bc 01       	movw	r22, r24
+ 16c:	cd 01       	movw	r24, r26
+ 16e:	08 95       	ret
+
+00000170 <_exit>:
+ 170:	f8 94       	cli
+
+00000172 <__stop_program>:
+ 172:	ff cf       	rjmp	.-2      	; 0x172 <__stop_program>
