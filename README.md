@@ -2,6 +2,8 @@
 Add an RGB battery indicator to any device you like to monitor the battery level.
 Default firmware is for a LiPo.
 
+License: CC-BY-NC
+
 Order the board at 0.8mm thickness if installing in Gameboy. Likely some shell cutting will be required.
 You'll need a programmer like a USBasp.
 Check the picture for the parts placement.
